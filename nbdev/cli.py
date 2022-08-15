@@ -28,7 +28,7 @@ __all__ = ['BASE_QUARTO_URL', 'prepare', 'nbdev_sidebar', 'FilterDefaults', 'nbd
            'extract_tgz', 'prompt_user', 'refresh_quarto_yml', 'nbdev_new', 'install_quarto', 'install', 'nbdev_readme',
            'nbdev_quarto', 'preview', 'deploy', 'chelp']
 
-# %% ../nbs/12_cli.ipynb 5
+# %% ../nbs/12_cli.ipynb 6
 @call_parse
 def prepare():
     "Export, test, and clean notebooks"
@@ -36,7 +36,7 @@ def prepare():
     nbdev_test.__wrapped__()
     nbdev_clean.__wrapped__()
 
-# %% ../nbs/12_cli.ipynb 7
+# %% ../nbs/12_cli.ipynb 8
 _def_file_re = '\.(?:ipynb|qmd|html)$'
 
 def _f(a,b): return Path(a),b
@@ -81,7 +81,7 @@ def nbdev_sidebar(
     yml_path.write_text(yml)
     if returnit: return files
 
-# %% ../nbs/12_cli.ipynb 10
+# %% ../nbs/12_cli.ipynb 11
 class FilterDefaults:
     "Override `FilterDefaults` to change which notebook processors are used"
     def _nothing(self): return []
@@ -109,7 +109,7 @@ class FilterDefaults:
         "Get an `NBProcessor` with these processors"
         return NBProcessor(nb=nb, procs=self.procs(), preprocs=self.preprocs(), postprocs=self.postprocs())
 
-# %% ../nbs/12_cli.ipynb 11
+# %% ../nbs/12_cli.ipynb 12
 @call_parse
 def nbdev_filter(
     nb_txt:str=None,  # Notebook text (uses stdin if not provided)
@@ -132,7 +132,7 @@ def nbdev_filter(
     if printit: print(res, flush=True)
     else: return res
 
-# %% ../nbs/12_cli.ipynb 14
+# %% ../nbs/12_cli.ipynb 15
 def bump_version(version, part=2, unbump=False):
     version = version.split('.')
     incr = -1 if unbump else 1
@@ -140,7 +140,7 @@ def bump_version(version, part=2, unbump=False):
     for i in range(part+1, 3): version[i] = '0'
     return '.'.join(version)
 
-# %% ../nbs/12_cli.ipynb 15
+# %% ../nbs/12_cli.ipynb 16
 @call_parse
 def nbdev_bump_version(
     part:int=2,  # Part of version to bump
@@ -154,15 +154,15 @@ def nbdev_bump_version(
     nbdev_export.__wrapped__()
     print(f'New version: {cfg.version}')
 
-# %% ../nbs/12_cli.ipynb 17
+# %% ../nbs/12_cli.ipynb 18
 def extract_tgz(url, dest='.'):
     from fastcore.net import urlopen
     with urlopen(url) as u: tarfile.open(mode='r:gz', fileobj=u).extractall(dest)
 
-# %% ../nbs/12_cli.ipynb 18
+# %% ../nbs/12_cli.ipynb 19
 def _mk_cfg(**kwargs): return {k: kwargs.get(k,None) for k in 'lib_name user branch author author_email keywords description repo'.split()}
 
-# %% ../nbs/12_cli.ipynb 19
+# %% ../nbs/12_cli.ipynb 20
 def _get_info(owner, repo, default_branch='main', default_kw='nbdev'):
     from ghapi.all import GhApi
     api = GhApi(owner=owner, repo=repo, token=os.getenv('GITHUB_TOKEN'))
@@ -179,7 +179,7 @@ https://nbdev.fast.ai/cli.html#Using-nbdev_new-with-private-repos
     
     return r.default_branch, default_kw if not r.topics else ' '.join(r.topics), r.description
 
-# %% ../nbs/12_cli.ipynb 21
+# %% ../nbs/12_cli.ipynb 22
 def _fetch_from_git(raise_err=False):
     "Get information for settings.ini from the user."
     res={}
@@ -195,7 +195,7 @@ def _fetch_from_git(raise_err=False):
     else: res['lib_name'] = res['repo'].replace('-','_')
     return res
 
-# %% ../nbs/12_cli.ipynb 23
+# %% ../nbs/12_cli.ipynb 24
 def prompt_user(cfg, inferred):
     "Let user input values not in `cfg` or `inferred`."
     print(S.dark_gray('# settings.ini'))
@@ -211,7 +211,7 @@ def prompt_user(cfg, inferred):
         else: print(msg+str(v))
     return res
 
-# %% ../nbs/12_cli.ipynb 24
+# %% ../nbs/12_cli.ipynb 25
 _quarto_yml="""ipynb-filters: [nbdev_filter]
 
 project:
@@ -265,7 +265,7 @@ def refresh_quarto_yml():
     yml=_quarto_yml.format(**vals)
     p.write_text(yml)
 
-# %% ../nbs/12_cli.ipynb 25
+# %% ../nbs/12_cli.ipynb 26
 @call_parse
 def nbdev_new(lib_name: str=None): # Package name (default: inferred from repo name)
     "Create a new project from the current git repo"
@@ -298,17 +298,22 @@ def nbdev_new(lib_name: str=None): # Package name (default: inferred from repo n
 
     nbdev_export.__wrapped__()
 
-# %% ../nbs/12_cli.ipynb 27
+# %% ../nbs/12_cli.ipynb 28
 def _sprun(cmd):
     try: subprocess.check_output(cmd, shell=True)
     except subprocess.CalledProcessError as cpe: sys.exit(cpe.returncode)
 
-# %% ../nbs/12_cli.ipynb 28
+# %% ../nbs/12_cli.ipynb 29
 BASE_QUARTO_URL='https://www.quarto.org/download/latest/'
 
 def _install_linux():
     system(f'curl -LO {BASE_QUARTO_URL}quarto-linux-amd64.deb')
-    system('sudo dpkg -i *64.deb && rm *64.deb')
+    system('dpkg -x quarto*.deb .')
+    system('mv opt/quarto ./')
+    system('rmdir opt')
+    system('mkdir -p ~/.local/bin')
+    system('ln -s "$(pwd)"/quarto/bin/quarto ~/.local/bin')
+    system('rm quarto*.deb')
     
 def _install_mac():
     system(f'curl -LO {BASE_QUARTO_URL}quarto-macos.pkg')
@@ -318,14 +323,14 @@ def install_quarto():
     "Install latest Quarto on macOS or Linux, prints instructions for Windows"
     if sys.platform not in ('darwin','linux'):
         return print('Please visit https://quarto.org/docs/get-started/ to install quarto')
-    print("Installing or upgrading quarto -- this requires root access.")
-    system('sudo touch .installing')
+    print("Installing or upgrading quarto -- this may require root access.")
+    system('touch .installing')
     try:
         installing = Path('.installing')
         if not installing.exists(): return print("Cancelled. Please download and install Quarto from quarto.org.")
         if 'darwin' in sys.platform: _install_mac()
         elif 'linux' in sys.platform: _install_linux()
-    finally: system('sudo rm -f .installing')
+    finally: system('rm -f .installing')
     
 def install():
     "Install Quarto and the current library"
@@ -333,7 +338,7 @@ def install():
     d = get_config().path('lib_path')
     if (d/'__init__.py').exists(): system(f'pip install -e "{d.parent}[dev]"')
 
-# %% ../nbs/12_cli.ipynb 29
+# %% ../nbs/12_cli.ipynb 30
 def _doc_paths(path:str=None, doc_path:str=None):
     cfg = get_config()
     cfg_path = cfg.config_path
@@ -342,7 +347,7 @@ def _doc_paths(path:str=None, doc_path:str=None):
     tmp_doc_path = path/f"{cfg['doc_path']}"
     return cfg,cfg_path,path,doc_path,tmp_doc_path
 
-# %% ../nbs/12_cli.ipynb 30
+# %% ../nbs/12_cli.ipynb 31
 def _render_readme(path):
     idx_path = path/get_config().readme_nb
     if not idx_path.exists(): return
@@ -358,7 +363,7 @@ def _render_readme(path):
     finally:
         if moved: (path/'sidebar.yml.bak').rename(yml_path)
 
-# %% ../nbs/12_cli.ipynb 31
+# %% ../nbs/12_cli.ipynb 32
 @call_parse
 def nbdev_readme(
     path:str=None, # Path to notebooks
@@ -371,13 +376,13 @@ def nbdev_readme(
         if _rdm.exists(): _rdm.unlink() # py37 doesn't have arg missing_ok so have to check first
         move(str(tmp_doc_path/'README.md'), cfg_path) # README.md is temporarily in nbs/_docs
 
-# %% ../nbs/12_cli.ipynb 32
+# %% ../nbs/12_cli.ipynb 33
 def _ensure_quarto():
     if shutil.which('quarto'): return
     print("Quarto is not installed. We will download and install it for you.")
     install()
 
-# %% ../nbs/12_cli.ipynb 33
+# %% ../nbs/12_cli.ipynb 34
 @call_parse
 def nbdev_quarto(
     path:str=None, # Path to notebooks
@@ -403,7 +408,7 @@ def nbdev_quarto(
             rmtree(doc_path, ignore_errors=True)
             move(tmp_doc_path, cfg_path)
 
-# %% ../nbs/12_cli.ipynb 34
+# %% ../nbs/12_cli.ipynb 35
 @call_parse
 def preview(
     path:str=None, # Path to notebooks
@@ -418,7 +423,7 @@ def preview(
     nbdev_quarto.__wrapped__(path, doc_path=doc_path, symlinks=symlinks, file_re=file_re, folder_re=folder_re,
                              skip_file_glob=skip_file_glob, skip_file_re=skip_file_re, preview=True)
 
-# %% ../nbs/12_cli.ipynb 35
+# %% ../nbs/12_cli.ipynb 36
 @call_parse
 def deploy(
     path:str=None, # Path to notebooks
@@ -438,7 +443,7 @@ def deploy(
     except: return warnings.warn('Please install ghp-import with `pip install ghp-import`')
     ghp_import(get_config().path('doc_path'), push=True, stderr=True, no_history=True)
 
-# %% ../nbs/12_cli.ipynb 37
+# %% ../nbs/12_cli.ipynb 38
 @call_parse
 def chelp():
     "Show help for all console scripts"
